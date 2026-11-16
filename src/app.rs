@@ -77,7 +77,7 @@ use wasm_bindgen::{JsCast, JsValue};
 #[cfg(target_arch = "wasm32")]
 use web_sys::{Worker, WorkerOptions, WorkerType, js_sys};
 
-pub struct ObamifyApp {
+pub struct StarifyApp {
     //prev_frame_time: std::time::Instant,
     // UI state
     size: (u32, u32),
@@ -165,7 +165,7 @@ pub struct ObamifyApp {
     reverse: bool,
 }
 
-impl ObamifyApp {
+impl StarifyApp {
     fn apply_sim_init(
         &mut self,
         device: &wgpu::Device,
@@ -267,8 +267,8 @@ impl ObamifyApp {
             get_presets()
         };
 
-        let has_obamified_once = if let Some(storage) = cc.storage {
-            eframe::get_value::<bool>(storage, "has_obamified_once").unwrap_or(false)
+        let has_starified_once = if let Some(storage) = cc.storage {
+            eframe::get_value::<bool>(storage, "has_starified_once").unwrap_or(false)
         } else {
             false
         };
@@ -798,7 +798,7 @@ impl ObamifyApp {
             preview_image: None,
             #[cfg(not(target_arch = "wasm32"))]
             stroke_count: 0,
-            gui: gui::GuiState::default(presets, random_preset, has_obamified_once),
+            gui: gui::GuiState::default(presets, random_preset, has_starified_once),
             frame_count: 0,
             #[cfg(not(target_arch = "wasm32"))]
             current_drawing_id: Arc::new(AtomicU32::new(0)),
@@ -845,12 +845,12 @@ impl ObamifyApp {
             .and_then(|v| v.as_string())
             .and_then(|url| url.rsplit('/').next().map(|s| format!("./{}", s)))
             .unwrap_or_else(|| {
-                // Fallback: parse from Error stack trace to find obamify-{hash}.js
+                // Fallback: parse from Error stack trace to find starify-{hash}.js
                 let error = js_sys::Error::new("stack trace");
                 if let Ok(stack_val) = js_sys::Reflect::get(&error, &JsValue::from_str("stack")) {
                     if let Some(stack) = stack_val.as_string() {
-                        // Look for obamify-{hash}.js in the stack
-                        if let Some(start) = stack.find("obamify-") {
+                        // Look for starify-{hash}.js in the stack
+                        if let Some(start) = stack.find("starify-") {
                             let rest = &stack[start..];
                             if let Some(end) = rest.find(".js") {
                                 let filename = &rest[..end + 3];
@@ -860,11 +860,27 @@ impl ObamifyApp {
                     }
                 }
 
-                String::from("./obamify.js")
+                String::from("./starify.js")
             });
 
-            // Use worker.js and pass the script name as a query parameter
-            let worker_url = format!("./worker.js?script={}", wasm_script_src);
+            // Trunk hashes the .js and the .wasm separately, so the worker cannot
+            // derive one name from the other; read the real one from the preload
+            // link Trunk puts in the page.
+            let wasm_src = web_sys::window()
+                .and_then(|w| w.document())
+                .and_then(|d| {
+                    d.query_selector("link[rel=\"preload\"][href$=\"_bg.wasm\"]")
+                        .ok()
+                        .flatten()
+                })
+                .and_then(|link| link.get_attribute("href"))
+                .and_then(|url| url.rsplit('/').next().map(|s| format!("./{}", s)));
+
+            // Use worker.js and pass the file names as query parameters
+            let mut worker_url = format!("./worker.js?script={}", wasm_script_src);
+            if let Some(wasm_src) = wasm_src {
+                worker_url.push_str(&format!("&wasm={}", wasm_src));
+            }
 
             let opts = WorkerOptions::new();
             opts.set_type(WorkerType::Module);
@@ -1814,3 +1830,29 @@ macro_rules! include_presets {
 }
 
 include_presets! { "wisetree", "blackhole", "cat", "cat2", "colorful" }
+
+/// Morphs `source` into the built-in target and returns the cropped source pixels
+/// (RGB, `sidelen` x `sidelen`) together with the assignment of every target cell
+/// to a source cell. Native only; this is what bakes the bundled presets.
+#[cfg(not(target_arch = "wasm32"))]
+pub fn generate_preset(
+    source: image::RgbImage,
+    name: String,
+    sidelen: u32,
+    proximity_importance: i64,
+) -> Result<(Vec<u8>, Vec<usize>), Box<dyn std::error::Error>> {
+    let mut settings = GenerationSettings::default(Uuid::new_v4(), name.clone());
+    settings.sidelen = sidelen;
+    // same normalisation the GUI applies, so results match across resolutions
+    settings.proximity_importance = (proximity_importance as f32 / (sidelen as f32 / 128.0)) as i64;
+    let preset = calculate::process_blocking(
+        UnprocessedPreset {
+            name,
+            width: source.width(),
+            height: source.height(),
+            source_img: source.into_raw(),
+        },
+        settings,
+    )?;
+    Ok((preset.inner.source_img, preset.assignments))
+}

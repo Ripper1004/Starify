@@ -504,3 +504,25 @@ pub fn process<S: ProgressSink>(
         Algorithm::Genetic => process_genetic(unprocessed, settings, tx),
     }
 }
+
+/// Runs the fast algorithm to completion on the calling thread and returns the
+/// finished preset. Used by `examples/make_preset.rs` to bake the bundled presets.
+#[cfg(not(target_arch = "wasm32"))]
+pub fn process_blocking(
+    unprocessed: UnprocessedPreset,
+    settings: GenerationSettings,
+) -> Result<Preset, Box<dyn std::error::Error>> {
+    let mut done = None;
+    let mut sink = |msg: ProgressMsg| {
+        if let ProgressMsg::Done(preset) = msg {
+            done = Some(preset);
+        }
+    };
+    process_genetic(
+        unprocessed,
+        settings,
+        &mut sink,
+        Arc::new(AtomicBool::new(false)),
+    )?;
+    done.ok_or_else(|| "generation finished without a result".into())
+}

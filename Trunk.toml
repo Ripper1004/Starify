@@ -1,2 +1,4 @@
 [build]
 filehash = true
+# relative URLs, so the built site works from any folder (e.g. GitHub Pages project sites)
+public_url = "./"

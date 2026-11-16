@@ -2,7 +2,7 @@
 use super::DRAWING_ALPHA;
 
 use super::GuiMode;
-use super::ObamifyApp;
+use super::StarifyApp;
 use crate::app::DEFAULT_RESOLUTION;
 use crate::app::calculate;
 use crate::app::calculate::ProgressMsg;
@@ -56,14 +56,14 @@ pub(crate) struct GuiState {
     pub current_preset: usize,
     error_message: Option<String>,
 
-    has_obamified_once: bool,
+    has_starified_once: bool,
 }
 
 impl GuiState {
     pub fn default(
         presets: Vec<Preset>,
         current_preset: usize,
-        has_obamified_once: bool,
+        has_starified_once: bool,
     ) -> GuiState {
         GuiState {
             animate: true,
@@ -83,7 +83,7 @@ impl GuiState {
             saved_config: None,
             current_preset,
             error_message: None,
-            has_obamified_once,
+            has_starified_once,
         }
     }
 
@@ -134,10 +134,10 @@ fn hide_icons() {
     }
 }
 
-impl App for ObamifyApp {
+impl App for StarifyApp {
     fn save(&mut self, storage: &mut dyn eframe::Storage) {
         eframe::set_value(storage, "presets", &self.gui.presets);
-        eframe::set_value(storage, "has_obamified_once", &self.gui.has_obamified_once);
+        eframe::set_value(storage, "has_starified_once", &self.gui.has_starified_once);
     }
     fn update(&mut self, ctx: &egui::Context, frame: &mut Frame) {
         let Some(rs) = frame.wgpu_render_state() else {
@@ -477,8 +477,8 @@ impl App for ObamifyApp {
                                         }
                                     });
 
-                                // Make button glow if user hasn't obamified once
-                                let button_response = if !self.gui.has_obamified_once {
+                                // Make button glow until the user has made their first one
+                                let button_response = if !self.gui.has_starified_once {
                                     // Create a glowing effect by animating the button outline
                                     let time = ui.input(|i| i.time);
                                     let pulse = ((time * 2.0).sin() * 0.5 + 0.5) as f32;
@@ -488,11 +488,11 @@ impl App for ObamifyApp {
                                         (200.0 + pulse * 55.0) as u8,
                                     );
 
-                                    let button = egui::Button::new("obamify new image")
+                                    let button = egui::Button::new("starify new image")
                                         .stroke(egui::Stroke::new(1.0, glow_color));
                                     ui.add(button)
                                 } else {
-                                    ui.button("obamify new image")
+                                    ui.button("starify new image")
                                 };
 
                                 if button_response.clicked() {
@@ -507,9 +507,9 @@ impl App for ObamifyApp {
                                         hide_icons();
                                     } else {
                                         prompt_image(
-                                            "choose image to obamify",
+                                            "choose image to starify",
                                             self,
-                                            |name: String, mut img: SourceImg, app: &mut ObamifyApp| {
+                                            |name: String, mut img: SourceImg, app: &mut StarifyApp| {
                                                 img = ensure_reasonable_size(img);
                                                 app.gui.configuring_generation = Some((
                                                     img,
@@ -523,27 +523,17 @@ impl App for ObamifyApp {
                                     }
                                 }
                             });
-                            ui.separator();
-
-                            if ui
-                                .add(egui::Button::new(egui::RichText::new("✏")))
-                                .on_hover_text("drawing mode")
-                                .clicked()
+                            #[cfg(not(target_arch = "wasm32"))]
                             {
-                                #[cfg(not(target_arch = "wasm32"))]
+                                ui.separator();
+
+                                if ui
+                                    .add(egui::Button::new(egui::RichText::new("✏")))
+                                    .on_hover_text("drawing mode")
+                                    .clicked()
                                 {
                                     self.gui.mode = GuiMode::Draw;
                                     self.init_canvas(device, &rs.queue);
-                                }
-
-                                #[cfg(target_arch = "wasm32")]
-                                {
-                                    web_sys::window()
-                                        .unwrap()
-                                        .alert_with_message(
-                                            "drawing mode not available on the web version :(",
-                                        )
-                                        .ok();
                                 }
                             }
                         }
@@ -552,7 +542,7 @@ impl App for ObamifyApp {
             );
         });
         if self.gui.configuring_generation.is_some() {
-            Window::new("obamification settings")
+            Window::new("starify settings")
                 .max_width(screen_width.min(400.0) * 0.8)
                 //.max_height(500.0)
                 .resizable(false)
@@ -569,12 +559,6 @@ impl App for ObamifyApp {
                         egui::Layout::top_down(egui::Align::Center),
                         |ui| {
                             ui.set_max_width(max_w);
-                            // ui.add(egui::Label::new(
-                            //     egui::RichText::new("obamification settings")
-                            //         .heading()
-                            //         .strong(),
-                            // ));
-                            // ui.separator();
                             ui.allocate_ui_with_layout(
                                 egui::vec2(max_w, 0.0),
                                 egui::Layout::left_to_right(egui::Align::Center)
@@ -592,7 +576,6 @@ impl App for ObamifyApp {
                             ui.separator();
 
                             let mut change_source = false;
-                            let mut change_target = false;
 
                             ui.allocate_ui_with_layout(
                                 egui::vec2(max_w, 0.0),
@@ -633,11 +616,9 @@ impl App for ObamifyApp {
                                             });
                                         }
 
-                                        change_target = image_crop_gui(
-                                            "target",
+                                        target_preview_gui(
                                             ui,
                                             &settings.get_raw_target(),
-                                            &mut settings.target_crop_scale,
                                             &mut cache.target_preview,
                                         );
                                     }
@@ -646,29 +627,15 @@ impl App for ObamifyApp {
 
                             if change_source {
                                 prompt_image(
-                                    "choose image to obamify",
+                                    "choose image to starify",
                                     self,
-                                    |_, mut img: SourceImg, app: &mut ObamifyApp| {
+                                    |_, mut img: SourceImg, app: &mut StarifyApp| {
                                         img = ensure_reasonable_size(img);
                                         if let Some((src, _, cache)) =
                                             &mut app.gui.configuring_generation
                                         {
                                             *src = img;
                                             cache.source_preview = None;
-                                        }
-                                    },
-                                );
-                            } else if change_target {
-                                prompt_image(
-                                    "choose custom target image",
-                                    self,
-                                    |_, mut img: SourceImg, app: &mut ObamifyApp| {
-                                        img = ensure_reasonable_size(img);
-                                        if let Some((_, settings, cache)) =
-                                            &mut app.gui.configuring_generation
-                                        {
-                                            settings.set_raw_target(img);
-                                            cache.target_preview = None;
                                         }
                                     },
                                 );
@@ -840,7 +807,7 @@ impl App for ObamifyApp {
                                         self.gui.presets.len() - 1,
                                     );
                                     self.gui.animate = true;
-                                    self.gui.has_obamified_once = true;
+                                    self.gui.has_starified_once = true;
                                     self.gui.hide_progress_modal();
                                     ui.close();
                                     break;
@@ -1166,13 +1133,13 @@ impl App for ObamifyApp {
 
 fn prompt_image(
     title: &'static str,
-    app: &mut ObamifyApp,
-    callback: impl FnOnce(String, image::RgbImage, &mut ObamifyApp) + 'static,
+    app: &mut StarifyApp,
+    callback: impl FnOnce(String, image::RgbImage, &mut StarifyApp) + 'static,
 ) {
     #[cfg(target_arch = "wasm32")]
     {
         use wasm_bindgen_futures::spawn_local;
-        let app_ptr: *mut ObamifyApp = app;
+        let app_ptr: *mut StarifyApp = app;
 
         spawn_local(async move {
             if let Some(handle) = rfd::AsyncFileDialog::new()
@@ -1315,6 +1282,28 @@ fn image_crop_gui(
     });
 
     open_file_dialog
+}
+
+/// The target is fixed, so it is shown for reference without any controls.
+fn target_preview_gui(ui: &mut egui::Ui, img: &SourceImg, cache: &mut Option<TextureHandle>) {
+    ui.vertical(|ui| {
+        let tex = match &cache {
+            None => {
+                let p = ui.ctx().load_texture(
+                    "target",
+                    egui::ColorImage::from_rgb(
+                        [128, 128],
+                        CropScale::identity().apply(img, 128).as_raw(),
+                    ),
+                    egui::TextureOptions::LINEAR,
+                );
+                *cache = Some(p.clone());
+                p
+            }
+            Some(t) => t.clone(),
+        };
+        ui.add(egui::Image::from_texture(&tex));
+    });
 }
 
 fn get_default_preset_name(mut n: String) -> String {

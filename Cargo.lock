@@ -2370,39 +2370,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "obamify"
-version = "0.3.0"
-dependencies = [
- "bytemuck",
- "color_quant",
- "console_error_panic_hook",
- "eframe",
- "egui",
- "egui-wgpu",
- "egui_extras",
- "env_logger",
- "frand",
- "futures",
- "futures-intrusive",
- "gif",
- "image",
- "indexmap",
- "log",
- "opener",
- "palette",
- "pathfinding",
- "pollster",
- "rfd",
- "serde",
- "serde-wasm-bindgen",
- "uuid",
- "wasm-bindgen",
- "wasm-bindgen-futures",
- "web-sys",
- "wgpu",
-]
-
-[[package]]
 name = "objc"
 version = "0.2.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3579,6 +3546,39 @@ name = "stable_deref_trait"
 version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a8f112729512f8e442d81f95a8a7ddf2b7c6b8a1a6f509a95864142b30cab2d3"
+
+[[package]]
+name = "starify"
+version = "0.1.0"
+dependencies = [
+ "bytemuck",
+ "color_quant",
+ "console_error_panic_hook",
+ "eframe",
+ "egui",
+ "egui-wgpu",
+ "egui_extras",
+ "env_logger",
+ "frand",
+ "futures",
+ "futures-intrusive",
+ "gif",
+ "image",
+ "indexmap",
+ "log",
+ "opener",
+ "palette",
+ "pathfinding",
+ "pollster",
+ "rfd",
+ "serde",
+ "serde-wasm-bindgen",
+ "uuid",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "web-sys",
+ "wgpu",
+]
 
 [[package]]
 name = "static_assertions"

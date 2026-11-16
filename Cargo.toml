@@ -1,9 +1,9 @@
 [package]
-name = "obamify"
-version = "0.3.0"
+name = "starify"
+version = "0.1.0"
 authors = ["Spu7Nix"]
 edition = "2024"
-include = ["LICENSE-MIT", "**/*.rs", "Cargo.toml"]
+include = ["LICENSE", "**/*.rs", "Cargo.toml"]
 rust-version = "1.85"
 
 [package.metadata.docs.rs]

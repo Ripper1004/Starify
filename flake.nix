@@ -1,5 +1,5 @@
 {
-  description = "revolutionary new technology that turns any image into obama";
+  description = "turns any image into a Star of David";
 
   inputs = {
     nixpkgs.url = "https://flakehub.com/f/NixOS/nixpkgs/0.1";
@@ -62,7 +62,7 @@
         { pkgs, systemStr }:
         {
           default = pkgs.rustPlatform.buildRustPackage {
-            pname = "obamify";
+            pname = "starify";
             version = "1.1";
 
             src = ./.;
@@ -95,7 +95,7 @@
             );
 
             postFixup = pkgs.lib.optionalString pkgs.stdenv.isLinux ''
-              wrapProgram $out/bin/obamify \
+              wrapProgram $out/bin/starify \
                 --set-default WINIT_UNIX_BACKEND wayland \
                 --set-default WGPU_BACKEND vulkan \
                 --set LD_LIBRARY_PATH ${
@@ -117,10 +117,9 @@
             enableParallelBuild = true;
 
             meta = {
-              description = "revolutionary new technology that turns any image into obama";
-              homepage = "htpps://github/Spu7Nix/obamify";
+              description = "turns any image into a Star of David";
               license = pkgs.lib.licenses.mit;
-              mainProgram = "obamify";
+              mainProgram = "starify";
             };
           };
         }

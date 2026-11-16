@@ -131,7 +131,6 @@ pub struct GenerationSettings {
     pub algorithm: Algorithm,
 
     pub sidelen: u32,
-    custom_target: Option<(u32, u32, Vec<u8>)>,
     pub target_crop_scale: CropScale,
     pub source_crop_scale: CropScale,
 }
@@ -142,11 +141,12 @@ impl GenerationSettings {
     pub fn default(id: Uuid, name: String) -> Self {
         Self {
             name,
-            proximity_importance: 13, // 20
+            // Lower than upstream's 13: a flat shape needs pixels to travel further
+            // than a face does before it reads clearly.
+            proximity_importance: 5,
             algorithm: Algorithm::Genetic,
             id,
             sidelen: 128,
-            custom_target: None,
             target_crop_scale: CropScale::identity(),
             source_crop_scale: CropScale::identity(),
         }
@@ -155,32 +155,17 @@ impl GenerationSettings {
     pub fn get_target(&self) -> Result<(SourceImg, Vec<i64>), Box<dyn std::error::Error>> {
         let target = self.get_raw_target();
         let target = self.target_crop_scale.apply(&target, self.sidelen);
-        let weights = if self.custom_target.is_some() {
-            vec![255; (self.sidelen * self.sidelen) as usize] // uniform weights
-        } else {
-            let target_weights =
-                image::load_from_memory(include_bytes!("weights256.png"))?.to_rgb8();
-            let target_weights = self.target_crop_scale.apply(&target_weights, self.sidelen);
-            load_weights(target_weights)
-        };
+        let target_weights = image::load_from_memory(include_bytes!("weights256.png"))?.to_rgb8();
+        let target_weights = self.target_crop_scale.apply(&target_weights, self.sidelen);
 
-        Ok((target, weights))
+        Ok((target, load_weights(target_weights)))
     }
 
+    /// The built-in target every image is morphed into (see `tools/make_target.py`).
     pub(crate) fn get_raw_target(&self) -> SourceImg {
-        if let Some((w, h, data)) = &self.custom_target {
-            image::ImageBuffer::from_vec(*w, *h, data.clone()).unwrap()
-        } else {
-            image::load_from_memory(include_bytes!("target256.png"))
-                .unwrap()
-                .to_rgb8()
-        }
-    }
-
-    pub(crate) fn set_raw_target(&mut self, img: SourceImg) {
-        let (w, h) = img.dimensions();
-        let data = img.into_raw();
-        self.custom_target = Some((w, h, data));
+        image::load_from_memory(include_bytes!("target256.png"))
+            .unwrap()
+            .to_rgb8()
     }
 
     pub fn clone_with_new_id(&self) -> Self {

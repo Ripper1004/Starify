@@ -4,11 +4,11 @@ on:
     workflow_dispatch: # manual run from Actions tab
 
 env:
-    BIN_NAME: obamify
+    BIN_NAME: starify
     # Human-facing display name for the app
-    APP_DISPLAY_NAME: obamify
+    APP_DISPLAY_NAME: starify
     # Reverse-DNS bundle identifier
-    APP_BUNDLE_ID: com.obamify
+    APP_BUNDLE_ID: com.starify
 
 jobs:
     build:
@@ -148,7 +148,7 @@ jobs:
                   #!/bin/sh
                   HERE="$(dirname "$(readlink -f "$0")")"
                   export PATH="$HERE/usr/bin:$PATH"
-                  exec "${HERE}/usr/bin/obamify" "$@"
+                  exec "${HERE}/usr/bin/starify" "$@"
                   APPRUN
                   chmod +x dist/AppDir/AppRun
 

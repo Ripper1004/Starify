@@ -1,38 +1,73 @@
-[(try it here)](https://obamify.com/)
-# obamify
-revolutionary new technology that turns any image into obama
+# starify
 
-![example](example.gif)
+Turns any image into a Star of David: the pixels of your picture fly apart and
+rearrange themselves into the star.
+
+Everything runs in the browser. Images you pick are never uploaded anywhere.
+
+![four images (top) and the stars their pixels rearrange into (bottom)](example.png)
+
+This is a fork of [obamify](https://github.com/Spu7Nix/obamify) by Spu7Nix
+(MIT licensed), with the target picture swapped and the interface trimmed to
+that one job.
 
 # How to use
 
-**Use the ui at the top of the window to control the animation, choose between saved transformations, and generate new ones.** You can change the source image and target image, and choose how they are cropped to a square (tip: if both the images are faces, try making the eyes overlap). You can also change these advanced settings:
-| Setting               | Description                                                                                     |
-|-----------------------|-------------------------------------------------------------------------------------------------|
-| resolution            | How many cells the images will be divided into. Higher resolution will capture more high frequency details. |
-| proximity importance  | How much the algorithm changes the original image to make it look like the target image. Increase this if you want a more subtle transformation. |
-| algorithm             | The algorithm used to calculate the assignment of each pixel. Optimal will find the mathematically optimal solution, but is extremely slow for high resolutions. |
+Use the bar at the top to replay the animation, play it in reverse, save it as
+a gif, switch between saved transformations, and make a new one from your own
+image. When making a new one you can crop and zoom your image; the small
+overlap preview shows how it lines up with the star.
 
-# Installations
+Advanced settings:
 
-Install the latest version in [releases](https://github.com/Spu7Nix/obamify/releases). Unzip and run the .exe file inside!
-**Note for macOS users:**
-Run 'xattr -C <path/to/app.app>' in your terminal to remove the damaged app warning. 
-### Building from source
+| Setting              | Description |
+|----------------------|-------------|
+| resolution           | How many cells the image is divided into. Higher is sharper and slower. |
+| proximity importance | How strongly pixels prefer to stay near where they started. Lower gives a crisper star, higher keeps more of the original picture visible. |
+| algorithm            | "fast" is the default. "optimal" finds the mathematically best arrangement but is extremely slow at high resolutions. |
+
+# Running it
 
 1. Install [Rust](https://www.rust-lang.org/tools/install)
-2. Run `cargo run --release` in the project folder
+2. `rustup target add wasm32-unknown-unknown`
+3. `cargo install --locked trunk`
+4. `trunk serve --release --open`
 
-#### Running the web version locally
-1. Install [Rust](https://www.rust-lang.org/tools/install)
-2. Install the required target with `rustup target add wasm32-unknown-unknown`
-3. Install Trunk with `cargo install --locked trunk`
-4. Run `trunk serve --release --open`
+`trunk build --release` writes the finished static site to `dist/`; host that
+folder anywhere. `.github/workflows/gh_pages.yml` does this on every push to
+`main` and publishes to GitHub Pages.
 
-# Contributing
-
-Please open an issue or a pull request if you have any suggestions or find any bugs :)
+There is also a desktop build: `cargo run --release`.
 
 # How it works
 
-magic
+The image is cut into a grid of cells. Every cell of the target star is
+assigned one cell of your image so that, overall, colours match the star as
+well as possible while cells travel as little as possible. The cost of putting
+a source cell on a target cell is
+
+    colour difference² × weight + (distance² × proximity importance)²
+
+`weight` comes from a second image, the weight map: it is high on and around
+the star, where the shape has to read clearly, and low in the background, where
+the original picture is allowed to show through.
+
+The animation is a particle simulation that pulls each cell to its assigned
+place while cells push each other apart.
+
+# Changing the star
+
+`tools/make_target.py` draws the target, the weight map and the app icons
+(needs Python with Pillow and numpy). Shape, colours and weights are constants
+at the top of the file.
+
+    python3 tools/make_target.py
+
+The bundled presets store assignments that were computed for one specific
+target, so re-bake them afterwards:
+
+    cargo run --release --example make_preset -- presets/cat/source.png cat
+
+# License
+
+MIT, see [LICENSE](LICENSE). Original work © Spu7Nix.
